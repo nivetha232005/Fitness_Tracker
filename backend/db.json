@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "id": "1780843295993",
+      "name": "Nivetha S",
+      "email": "nivethasivashankar23@gmail.com",
+      "password": "$2a$10$igbV7DH56GCAtjUtlQXG7.tmly.Ytzwu4hMZH9dy5BEYTCm5Tk6n6",
+      "age": 21,
+      "gender": "female",
+      "height": 120,
+      "weight": 80,
+      "fitnessGoal": "muscle_gain",
+      "createdAt": "2026-06-07T14:41:35.994Z"
+    }
+  ]
+}
