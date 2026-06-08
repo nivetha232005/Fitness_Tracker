@@ -202,6 +202,21 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+// Add this near your other routes (after CORS middleware)
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Fitness Tracker API is running!',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      test: '/api/test',
+      register: '/api/auth/register',
+      login: '/api/auth/login',
+      workouts: '/api/workouts'
+    }
+  });
+});
+
 // Update user details
 app.put('/api/auth/updatedetails', async (req, res) => {
   try {
