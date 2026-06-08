@@ -2,8 +2,8 @@
 const getApiUrl = () => {
   // Production - deployed on Render
   if (import.meta.env.PROD) {
-    // Make sure to include /api at the end
-    return 'https://fitness-tracker-backend.onrender.com/api';
+    // Use your actual backend URL
+    return 'https://fitness-tracker-ekv4.onrender.com/api';
   }
   // Development - local
   return 'http://localhost:5000/api';
