@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { API_URL } from '../config';
+
 
 const AuthContext = createContext();
 
@@ -21,12 +23,12 @@ export const AuthProvider = ({ children }) => {
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
   
   // Create axios instance
-  const api = axios.create({
-    baseURL: apiUrl,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
   // Set auth token for all requests
   if (token) {
