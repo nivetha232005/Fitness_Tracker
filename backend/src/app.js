@@ -7,46 +7,21 @@ require('dotenv').config();
 
 const app = express();
 
-// CORS configuration - Allow multiple origins
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
+// Middleware
+app.use(express.json());
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: ['http://localhost:5173', 'https://fitness-tracker-ekv4.onrender.com'],
+  credentials: true
 }));
 
-app.use(express.json());
-
-// Health check endpoint
+// Health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date(),
-    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
-  });
+  res.json({ status: 'OK', mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected' });
 });
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'Fitness Tracker API is running!',
-    environment: process.env.NODE_ENV || 'development',
-    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
-  });
+  res.json({ message: 'API is working!' });
 });
 
 // User Schema
@@ -67,36 +42,36 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Register endpoint
+// REGISTER ENDPOINT - THIS IS WHAT YOU NEED
 app.post('/api/auth/register', async (req, res) => {
   try {
     console.log('Registration attempt:', req.body.email);
     
     const { name, email, password, age, gender, height, weight, fitnessGoal } = req.body;
     
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Please provide all required fields' });
-    }
-    
+    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, error: 'User already exists' });
     }
     
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
+    // Create user
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      age: age || null,
-      gender: gender || null,
-      height: height || null,
-      weight: weight || null,
-      fitnessGoal: fitnessGoal || 'maintenance'
+      age,
+      gender,
+      height,
+      weight,
+      fitnessGoal
     });
     
+    // Create token
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET || 'secret123',
@@ -121,30 +96,30 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login endpoint
+// LOGIN ENDPOINT - THIS IS WHAT YOU NEED
 app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('Login attempt:', req.body.email);
     
     const { email, password } = req.body;
     
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Please provide email and password' });
-    }
-    
+    // Find user
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
     
+    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
     
+    // Update last active
     user.lastActive = new Date();
     await user.save();
     
+    // Create token
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET || 'secret123',
@@ -184,79 +159,28 @@ app.get('/api/auth/me', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
     
-    let bmi = null;
-    if (user.height && user.weight) {
-      const heightInMeters = user.height / 100;
-      bmi = (user.weight / (heightInMeters * heightInMeters)).toFixed(1);
-    }
-    
-    res.json({
-      success: true,
-      data: {
-        ...user.toObject(),
-        bmi
-      }
-    });
+    res.json({ success: true, data: user });
   } catch (error) {
     res.status(401).json({ success: false, error: 'Invalid token' });
   }
 });
 
-// Add this near your other routes (after CORS middleware)
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Fitness Tracker API is running!',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      test: '/api/test',
-      register: '/api/auth/register',
-      login: '/api/auth/login',
-      workouts: '/api/workouts'
-    }
-  });
-});
-
-// Update user details
-app.put('/api/auth/updatedetails', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, error: 'No token provided' });
-    }
-    
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
-    const user = await User.findByIdAndUpdate(
-      decoded.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).select('-password');
-    
-    res.json({ success: true, data: user });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error('MONGODB_URI is not defined');
-  process.exit(1);
-}
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fitness_tracker';
 
 mongoose.connect(MONGODB_URI)
   .then(() => {
-    console.log('MongoDB Atlas Connected Successfully');
+    console.log('MongoDB Connected');
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Test: http://localhost:${PORT}/api/test`);
+      console.log(`Register: http://localhost:${PORT}/api/auth/register`);
+      console.log(`Login: http://localhost:${PORT}/api/auth/login`);
     });
   })
   .catch(err => {
-    console.error('MongoDB Connection Error:', err.message);
+    console.error('MongoDB connection error:', err);
     process.exit(1);
   });
 
